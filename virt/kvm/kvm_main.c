@@ -110,6 +110,8 @@ module_param(allow_unsafe_mappings, bool, 0444);
 
 DEFINE_MUTEX(kvm_lock);
 LIST_HEAD(vm_list);
+/* Owner of KVM's vendor implementation, used by per-VM debugfs files. */
+struct module *kvm_owner;
 
 static struct kmem_cache *kvm_vcpu_cache;
 
@@ -118,7 +120,7 @@ static DEFINE_PER_CPU(struct kvm_vcpu *, kvm_running_vcpu);
 
 static struct dentry *kvm_debugfs_dir;
 
-static const struct file_operations stat_fops_per_vm;
+static struct file_operations stat_fops_per_vm;
 
 static long kvm_vcpu_ioctl(struct file *file, unsigned int ioctl,
 			   unsigned long arg);
@@ -4319,7 +4321,7 @@ static int kvm_vcpu_stats_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations kvm_vcpu_stats_fops = {
+static struct file_operations kvm_vcpu_stats_fops = {
 	.owner = THIS_MODULE,
 	.read = kvm_vcpu_stats_read,
 	.release = kvm_vcpu_stats_release,
@@ -5129,7 +5131,7 @@ static int kvm_vm_stats_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations kvm_vm_stats_fops = {
+static struct file_operations kvm_vm_stats_fops = {
 	.owner = THIS_MODULE,
 	.read = kvm_vm_stats_read,
 	.release = kvm_vm_stats_release,
@@ -6233,7 +6235,7 @@ static int kvm_stat_data_open(struct inode *inode, struct file *file)
 				kvm_stat_data_clear, "%llu\n");
 }
 
-static const struct file_operations stat_fops_per_vm = {
+static struct file_operations stat_fops_per_vm = {
 	.owner = THIS_MODULE,
 	.open = kvm_stat_data_open,
 	.release = kvm_debugfs_release,
@@ -6544,6 +6546,10 @@ int kvm_init(unsigned vcpu_size, unsigned vcpu_align, struct module *module)
 	kvm_vm_fops.owner = module;
 	kvm_vcpu_fops.owner = module;
 	kvm_device_fops.owner = module;
+	kvm_owner = module;
+	kvm_vm_stats_fops.owner = module;
+	kvm_vcpu_stats_fops.owner = module;
+	stat_fops_per_vm.owner = module;
 
 	kvm_preempt_ops.sched_in = kvm_sched_in;
 	kvm_preempt_ops.sched_out = kvm_sched_out;

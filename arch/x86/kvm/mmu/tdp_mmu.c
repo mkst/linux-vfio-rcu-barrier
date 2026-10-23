@@ -44,13 +44,6 @@ void kvm_mmu_uninit_tdp_mmu(struct kvm *kvm)
 	KVM_MMU_WARN_ON(atomic64_read(&kvm->arch.tdp_mmu_pages));
 #endif
 	WARN_ON(!list_empty(&kvm->arch.tdp_mmu_roots));
-
-	/*
-	 * Ensure that all the outstanding RCU callbacks to free shadow pages
-	 * can run before the VM is torn down.  Putting the last reference to
-	 * zapped roots will create new callbacks.
-	 */
-	rcu_barrier();
 }
 
 static void __tdp_mmu_free_sp(struct kvm_mmu_page *sp)
