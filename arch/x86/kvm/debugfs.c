@@ -181,7 +181,7 @@ static int kvm_mmu_rmaps_stat_release(struct inode *inode, struct file *file)
 	return single_release(inode, file);
 }
 
-static const struct file_operations mmu_rmaps_stat_fops = {
+static struct file_operations mmu_rmaps_stat_fops = {
 	.owner		= THIS_MODULE,
 	.open		= kvm_mmu_rmaps_stat_open,
 	.read		= seq_read,
@@ -189,8 +189,19 @@ static const struct file_operations mmu_rmaps_stat_fops = {
 	.release	= kvm_mmu_rmaps_stat_release,
 };
 
+static DEFINE_MUTEX(mmu_rmaps_stat_fops_lock);
+static bool mmu_rmaps_stat_fops_initialized;
+
 void kvm_arch_create_vm_debugfs(struct kvm *kvm)
 {
+	/* Initialize before publishing the fops, and never mutate it afterwards. */
+	mutex_lock(&mmu_rmaps_stat_fops_lock);
+	if (!mmu_rmaps_stat_fops_initialized) {
+		mmu_rmaps_stat_fops.owner = kvm_owner;
+		mmu_rmaps_stat_fops_initialized = true;
+	}
+	mutex_unlock(&mmu_rmaps_stat_fops_lock);
+
 	debugfs_create_file("mmu_rmaps_stat", 0644, kvm->debugfs_dentry, kvm,
 			    &mmu_rmaps_stat_fops);
 }

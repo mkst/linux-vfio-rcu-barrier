@@ -7836,6 +7836,8 @@ void kvm_mmu_destroy(struct kvm_vcpu *vcpu)
 
 void kvm_mmu_vendor_module_exit(void)
 {
+	/* Drain TDP callbacks before destroying the cache they free pages into. */
+	rcu_barrier();
 	mmu_destroy_caches();
 }
 
